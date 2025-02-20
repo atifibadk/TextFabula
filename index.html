@@ -9,6 +9,8 @@
       href="https://fonts.googleapis.com/css?family=Roboto:400,500,700"
       rel="stylesheet"
     />
+    <!-- Include FFmpeg.wasm from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     <style>
       /* Prevent scrolling on the html and body */
       html,
@@ -180,9 +182,23 @@
         text-decoration: none;
         color: #075e54;
       }
-      #exportLink svg {
-        vertical-align: middle;
-        margin-right: 4px;
+      /* Export Button Style */
+      #exportBtn {
+        background-color: #075e54;
+        color: #fff;
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+      #exportBtn:hover {
+        background-color: #064d45;
+      }
+      #exportBtn:disabled {
+        background-color: #aaa;
+        cursor: not-allowed;
       }
       /* New button */
       #newBtn {
@@ -199,6 +215,12 @@
       }
       #newBtn:hover {
         background-color: #064d45;
+      }
+      /* Progress Indicator */
+      #progressIndicator {
+        text-align: center;
+        margin-top: 10px;
+        color: #075e54;
       }
       /* Footer text */
       #footerText {
@@ -238,7 +260,7 @@
   <body>
     <!-- Home Screen -->
     <div id="homeScreen">
-      <button id="infoBtn" title="Information">ℹ️</button>
+      <button id="infoBtn" title="Instructions">ℹ️</button>
       <h1>TextFabula</h1>
       <p>
         Enter your JSON below (following the schema) and click
@@ -255,10 +277,13 @@
     <div id="infoModal">
       <div id="infoModalContent">
         <button id="closeModalBtn" title="Close">✖️</button>
-        <h2>Information</h2>
+        <h2>Instructions</h2>
         <p>
-          Enter the context for each prompt. The full prompt will be generated
-          in the background and copied to your clipboard.
+          Please enter the context for your prompt. The complete prompt will be
+          automatically generated and copied to your clipboard. Then, simply
+          paste it into your preferred LLM app (for example, ChatGPT, Deepseek,
+          Grok, Gemini, or any other) to obtain the output JSON, and finally
+          paste that JSON into the textbox on the app’s homepage.
         </p>
         <!-- Personal Chat Prompt Context -->
         <div class="modalSubHeading">Personal Chat Prompt Context</div>
@@ -290,7 +315,10 @@
       <div id="canvasContainer">
         <canvas id="chatCanvas" width="360" height="640"></canvas>
       </div>
+      <!-- Export link will be populated after recording stops -->
       <div id="exportLink"></div>
+      <!-- Progress indicator for conversion -->
+      <div id="progressIndicator" style="display: none"></div>
       <button id="newBtn">New</button>
       <div id="footerText">
         Made with ❤️ by
@@ -311,6 +339,26 @@
     ></audio>
 
     <script>
+      // Processing Animation Functions
+      let processingInterval;
+      function startProcessingAnimation() {
+        const progressIndicator = document.getElementById("progressIndicator");
+        let dots = "";
+        processingInterval = setInterval(() => {
+          if (dots.length >= 3) {
+            dots = "";
+          } else {
+            dots += ".";
+          }
+          progressIndicator.innerText = "Processing" + dots;
+        }, 500);
+      }
+      function stopProcessingAnimation() {
+        clearInterval(processingInterval);
+        const progressIndicator = document.getElementById("progressIndicator");
+        progressIndicator.innerText = "";
+      }
+
       // Default JSON string to use when resetting.
       const defaultJson = `{
   "settings": {
@@ -528,6 +576,20 @@ The story should follow the given context:
 </Prompt>`;
 
       /*************************************************************
+       * FFmpeg Setup
+       *************************************************************/
+      const { createFFmpeg, fetchFile } = FFmpeg;
+      const ffmpeg = createFFmpeg({
+        log: true,
+        progress: ({ ratio }) => {
+          const progressIndicator =
+            document.getElementById("progressIndicator");
+          progressIndicator.style.display = "block";
+          // Processing animation will update the text.
+        },
+      });
+
+      /*************************************************************
        * UI Event Handlers
        *************************************************************/
       submitBtn.addEventListener("click", () => {
@@ -643,6 +705,8 @@ The story should follow the given context:
         typedCharCount = 0;
         scrollOffset = 0;
         exportLink.innerHTML = "";
+        const progressIndicator = document.getElementById("progressIndicator");
+        progressIndicator.style.display = "none";
         for (const key in senderColors) {
           delete senderColors[key];
         }
@@ -712,15 +776,48 @@ The story should follow the given context:
             chunks.push(e.data);
           }
         };
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: "video/webm" });
-          const url = URL.createObjectURL(blob);
-          exportLink.innerHTML = `<a href="${url}" download="chat-simulation.webm" id="exportAnchor" style="text-decoration: none; color: #075E54;">
-          <svg xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:4px" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M5 20h14v-2H5v2zM12 4L5 11h4v6h4v-6h4L12 4z"/>
-          </svg>
-          Export to video
-        </a>`;
+        // When recording stops, set up the export button with conversion
+        recorder.onstop = async () => {
+          // Create a blob from the recorded chunks (WebM format)
+          const videoBlob = new Blob(chunks, { type: "video/webm" });
+          exportLink.innerHTML = `<button id="exportBtn">Export to video</button>`;
+          document
+            .getElementById("exportBtn")
+            .addEventListener("click", async () => {
+              const exportBtn = document.getElementById("exportBtn");
+              exportBtn.disabled = true;
+              const progressIndicator =
+                document.getElementById("progressIndicator");
+              progressIndicator.style.display = "block";
+              startProcessingAnimation();
+
+              if (!ffmpeg.isLoaded()) {
+                await ffmpeg.load();
+              }
+
+              // Write the recorded WebM blob to FFmpeg's filesystem
+              ffmpeg.FS("writeFile", "input.webm", await fetchFile(videoBlob));
+
+              // Run FFmpeg to convert WebM to MP4
+              await ffmpeg.run("-i", "input.webm", "output.mp4");
+
+              // Read the converted MP4 file from FFmpeg's filesystem
+              const data = ffmpeg.FS("readFile", "output.mp4");
+              const mp4Blob = new Blob([data.buffer], { type: "video/mp4" });
+              const mp4Url = URL.createObjectURL(mp4Blob);
+
+              // Trigger the download of the MP4 file
+              const a = document.createElement("a");
+              a.href = mp4Url;
+              a.download = "chat-simulation.mp4";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+
+              stopProcessingAnimation();
+              progressIndicator.style.display = "none";
+              exportBtn.disabled = false;
+            });
         };
         recorder.start();
       }
