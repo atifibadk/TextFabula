@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chat Simulation</title>
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:400,500,700"
+      rel="stylesheet"
+    />
+    <style>
+      /* Prevent scrolling */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      body {
+        background: #f1f1f1;
+        font-family: "Roboto", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        position: relative;
+      }
+      /* Home Screen */
+      #homeScreen {
+        background: #fff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        text-align: center;
+        max-width: 500px;
+        width: 90%;
+        margin-bottom: 20px;
+        position: relative;
+      }
+      #homeScreen h1 {
+        margin-top: 0;
+        color: #075e54;
+      }
+      #jsonInput {
+        width: 100%;
+        height: 250px;
+        padding: 12px;
+        margin: 20px 0;
+        font-family: monospace;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        resize: vertical;
+      }
+      .homeButtons {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+      }
+      .homeButtons button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 4px;
+        background-color: #075e54;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+      .homeButtons button:hover {
+        background-color: #064d45;
+      }
+      /* Info button */
+      #infoBtn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 20px;
+        color: #075e54;
+      }
+      /* Modal Dialog */
+      #infoModal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background: rgba(0, 0, 0, 0.5);
+      }
+      #infoModalContent {
+        background: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 90%;
+        position: relative;
+      }
+      #infoModalContent h2 {
+        margin-top: 0;
+        color: #075e54;
+      }
+      .modalSubHeading {
+        font-weight: bold;
+        margin-top: 15px;
+        color: #075e54;
+      }
+      .contextInput {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 14px;
+        color: #666;
+      }
+      .copyPromptBtn {
+        padding: 8px 16px;
+        font-size: 14px;
+        border: none;
+        border-radius: 4px;
+        background-color: #075e54;
+        color: #fff;
+        cursor: pointer;
+      }
+      .copyPromptBtn:disabled {
+        background-color: #aaa;
+        cursor: not-allowed;
+      }
+      #closeModalBtn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #075e54;
+      }
+      /* Simulation Screen */
+      #simulationScreen {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 400px;
+        margin-bottom: 20px;
+      }
+      #canvasContainer {
+        width: 360px;
+        height: 640px;
+        margin: 20px 0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        background: #ece5dd;
+      }
+      #chatCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      #exportLink {
+        margin: 10px 0;
+        font-size: 16px;
+        text-decoration: none;
+        color: #075e54;
+      }
+      #exportLink svg {
+        vertical-align: middle;
+        margin-right: 4px;
+      }
+      /* New button */
+      #newBtn {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 4px;
+        background-color: #075e54;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.3s ease;
+        margin-bottom: 10px;
+        display: block;
+      }
+      #newBtn:hover {
+        background-color: #064d45;
+      }
+      /* Footer text */
+      #footerText {
+        font-size: 14px;
+        color: #555;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Home Screen -->
+    <div id="homeScreen">
+      <button id="infoBtn" title="Information">ℹ️</button>
+      <h1>Chat Simulator</h1>
+      <p>
+        Enter your JSON below (following the schema) and click
+        <strong>Submit</strong>:
+      </p>
+      <textarea id="jsonInput"></textarea>
+      <div class="homeButtons">
+        <button id="submitBtn">Submit</button>
+        <button id="clearHomeBtn">Clear</button>
+      </div>
+    </div>
+
+    <!-- Info Modal Dialog -->
+    <div id="infoModal">
+      <div id="infoModalContent">
+        <button id="closeModalBtn" title="Close">✖️</button>
+        <h2>Information</h2>
+        <p>
+          Enter the context for each prompt. The full prompt will be generated
+          in the background and copied to your clipboard.
+        </p>
+        <!-- Personal Chat Prompt Context -->
+        <div class="modalSubHeading">Personal Chat Prompt Context</div>
+        <input
+          type="text"
+          id="personalContextInput"
+          class="contextInput"
+          placeholder="Enter personal context here"
+        />
+        <button id="copyPromptBtnPersonal" class="copyPromptBtn" disabled>
+          Copy Personal Prompt
+        </button>
+        <!-- Group Chat Prompt Context -->
+        <div class="modalSubHeading">Group Chat Prompt Context</div>
+        <input
+          type="text"
+          id="groupContextInput"
+          class="contextInput"
+          placeholder="Enter group context here"
+        />
+        <button id="copyPromptBtnGroup" class="copyPromptBtn" disabled>
+          Copy Group Prompt
+        </button>
+      </div>
+    </div>
+
+    <!-- Simulation Screen -->
+    <div id="simulationScreen">
+      <div id="canvasContainer">
+        <canvas id="chatCanvas" width="360" height="640"></canvas>
+      </div>
+      <div id="exportLink"></div>
+      <button id="newBtn">New</button>
+      <div id="footerText">
+        Made with ❤️ by
+        <a
+          href="https://www.linkedin.com/in/atifibadkhan/"
+          target="_blank"
+          style="text-decoration: none; color: #075e54"
+          >@IbadAtif</a
+        >
+      </div>
+    </div>
+
+    <!-- Audio for received message sound -->
+    <audio
+      id="messageSound"
+      src="https://actions.google.com/sounds/v1/alarms/notification_002.ogg"
+      preload="auto"
+    ></audio>
+
+    <script>
+      // Default JSON string to use when resetting.
+      const defaultJson = `{
+  "settings": {
+    "chatType": "group",
+    "groupName": "Space Explorers",
+    "defaultDelay": 1500,
+    "defaultTypingDelay": 1000,
+    "senderName": "Captain Nova",
+    "receiverName": "Lt. Vega"
+  },
+  "messages": [
+    {
+      "sender": "Captain Nova",
+      "text": "Team, prepare for launch. Our mission is critical.",
+      "delay": 1200,
+      "typingDelay": 1000
+    },
+    {
+      "sender": "Lt. Vega",
+      "text": "Understood, Captain. All systems are go.",
+      "delay": 1000,
+      "typingDelay": 1000
+    },
+    {
+      "sender": "Dr. Orion",
+      "text": "I've completed the research on the anomaly.",
+      "delay": 1500,
+      "typingDelay": 1200
+    },
+    {
+      "sender": "Captain Nova",
+      "text": "Excellent. Let's proceed and uncover the mystery.",
+      "delay": 1300,
+      "typingDelay": 1500
+    }
+  ]
+}`;
+      // Set the default JSON in the textarea on load.
+      document.getElementById("jsonInput").value = defaultJson;
+
+      /*************************************************************
+       * Global Variables & UI Elements
+       *************************************************************/
+      const homeScreen = document.getElementById("homeScreen");
+      const simulationScreen = document.getElementById("simulationScreen");
+      const submitBtn = document.getElementById("submitBtn");
+      const clearHomeBtn = document.getElementById("clearHomeBtn");
+      const newBtn = document.getElementById("newBtn");
+      const jsonInput = document.getElementById("jsonInput");
+      const exportLink = document.getElementById("exportLink");
+      const infoBtn = document.getElementById("infoBtn");
+      const infoModal = document.getElementById("infoModal");
+      const closeModalBtn = document.getElementById("closeModalBtn");
+      const copyPromptBtnPersonal = document.getElementById(
+        "copyPromptBtnPersonal"
+      );
+      const copyPromptBtnGroup = document.getElementById("copyPromptBtnGroup");
+      const personalContextInput = document.getElementById(
+        "personalContextInput"
+      );
+      const groupContextInput = document.getElementById("groupContextInput");
+
+      // Canvas elements
+      const canvas = document.getElementById("chatCanvas");
+      const ctx = canvas.getContext("2d");
+      const WIDTH = canvas.width;
+      const HEIGHT = canvas.height;
+
+      // Layout constants
+      const HEADER_HEIGHT = 60;
+      const FOOTER_HEIGHT = 60;
+      const CHAT_AREA_TOP = HEADER_HEIGHT;
+      const CHAT_AREA_BOTTOM = HEIGHT - FOOTER_HEIGHT;
+      const CHAT_AREA_HEIGHT = CHAT_AREA_BOTTOM - CHAT_AREA_TOP;
+
+      // Recording & Animation state
+      let recorder;
+      let chunks = [];
+      let animationRequestId;
+      let startTime = null;
+
+      // Timeline events and simulation state
+      let timeline = [];
+      let currentEventIndex = 0;
+      let simulationCompleted = false;
+      let simulationFinishTime = null;
+      let simulationHasFinished = false;
+
+      // Chat & typing state
+      let localName = ""; // local user name from settings
+      let receiverName = ""; // receiver name for personal chat
+      let groupName = ""; // group name for group chat
+      let theme = "light"; // Always light
+      let isGroupChat = false;
+      let typingSender = null; // the sender currently typing
+      let typingMessage = "";
+      let typedCharCount = 0;
+      const chatMessages = [];
+      let scrollOffset = 0;
+
+      // For group chat, assign each sender a unique color
+      const senderColors = {};
+      const availableColors = [
+        "#E57373",
+        "#64B5F6",
+        "#81C784",
+        "#FFD54F",
+        "#BA68C8",
+        "#4DD0E1",
+        "#F06292",
+        "#FF8A65",
+      ];
+      let colorIndex = 0;
+
+      // Prompt templates with default <context> tags.
+      const personalTemplate = `<Prompt>
+Generate a fictional story in the form of a personal chat conversation between two individuals. The story should be engaging, dynamic, and driven through the exchange of messages. Each message should have natural pacing, incorporating optional delays to simulate real typing behavior.
+
+Adhere strictly to the following JSON schema:
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "settings": {
+      "type": "object",
+      "properties": {
+        "chatType": { "type": "string", "enum": ["personal"] },
+        "senderName": { "type": "string" },
+        "receiverName": { "type": "string" },
+        "defaultDelay": { "type": "integer", "minimum": 0 },
+        "defaultTypingDelay": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["chatType", "senderName"],
+      "additionalProperties": false
+    },
+    "messages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" },
+          "delay": { "type": "integer", "minimum": 0 },
+          "typingDelay": { "type": "integer", "minimum": 0 },
+          "type": { "type": "string", "enum": ["sent", "received"] }
+        },
+        "required": ["text", "type"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["settings", "messages"]
+}
+
+**Instructions:**  
+- Keep the theme light and engaging. The story should have a fun, positive, or heartwarming tone.  
+- Delays should be in milliseconds (1000ms = 1 second).  
+- The conversation should feel natural, with realistic pacing and message flow.
+
+The story should follow the given context:
+
+<context>Insert your personal chat context here</context>
+</Prompt>`;
+
+      const groupTemplate = `<Prompt>
+Generate a fictional story in the form of a group chat conversation among multiple people. The story should feel dynamic, with different characters engaging in natural and varied interactions. The pacing should reflect realistic group chat behavior, including natural pauses and typing delays.
+
+Follow the given JSON schema strictly:
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "settings": {
+      "type": "object",
+      "properties": {
+        "chatType": { "type": "string", "enum": ["group"] },
+        "senderName": { "type": "string" },
+        "groupName": { "type": "string" },
+        "defaultDelay": { "type": "integer", "minimum": 0 },
+        "defaultTypingDelay": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["chatType", "senderName", "groupName"],
+      "additionalProperties": false
+    },
+    "messages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" },
+          "delay": { "type": "integer", "minimum": 0 },
+          "typingDelay": { "type": "integer", "minimum": 0 },
+          "sender": { "type": "string" }
+        },
+        "required": ["text", "sender"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["settings", "messages"]
+}
+
+**Instructions:**  
+- Keep the theme light and engaging. The conversation should be fun, humorous, uplifting, or heartwarming.  
+- Delays should be in milliseconds (1000ms = 1 second).  
+- The group chat should have at least three participants with varied personalities and message styles.  
+- Messages should flow naturally, simulating a real group conversation.
+
+The story should follow the given context:
+
+<context>Insert your group chat context here</context>
+</Prompt>`;
+
+      /*************************************************************
+       * UI Event Handlers
+       *************************************************************/
+      submitBtn.addEventListener("click", () => {
+        try {
+          const config = JSON.parse(jsonInput.value);
+          localName = config.settings.senderName || "Me";
+          isGroupChat = config.settings.chatType === "group";
+          if (isGroupChat) {
+            groupName = config.settings.groupName || "Group Chat";
+          } else {
+            receiverName = config.settings.receiverName || "Chat";
+          }
+          homeScreen.style.display = "none";
+          simulationScreen.style.display = "flex";
+          resetSimulationState();
+          setupSimulation(config);
+          startRecordingAndAnimation();
+        } catch (e) {
+          alert("Invalid JSON: " + e.message);
+        }
+      });
+
+      clearHomeBtn.addEventListener("click", () => {
+        jsonInput.value = "";
+      });
+
+      newBtn.addEventListener("click", () => {
+        clearSimulation();
+        // Reset context inputs and default JSON
+        personalContextInput.value = "";
+        groupContextInput.value = "";
+        jsonInput.value = defaultJson;
+      });
+
+      infoBtn.addEventListener("click", () => {
+        infoModal.style.display = "block";
+      });
+
+      // Helper to close the info modal, clear context inputs, and disable copy buttons
+      function closeInfoModal() {
+        infoModal.style.display = "none";
+        personalContextInput.value = "";
+        groupContextInput.value = "";
+        copyPromptBtnPersonal.disabled = true;
+        copyPromptBtnGroup.disabled = true;
+      }
+
+      closeModalBtn.addEventListener("click", () => {
+        closeInfoModal();
+      });
+
+      window.addEventListener("click", (e) => {
+        if (e.target === infoModal) {
+          closeInfoModal();
+        }
+      });
+
+      // When copying the personal prompt, replace text between <context> and </context>
+      copyPromptBtnPersonal.addEventListener("click", () => {
+        const context = personalContextInput.value.trim();
+        const fullPrompt = personalTemplate.replace(
+          /<context>.*?<\/context>/g,
+          `<context>${context}</context>`
+        );
+        navigator.clipboard
+          .writeText(fullPrompt)
+          .then(() => {
+            alert("Personal prompt copied to clipboard!");
+          })
+          .catch((err) => {
+            alert("Failed to copy: " + err);
+          });
+      });
+
+      // Same for group prompt
+      copyPromptBtnGroup.addEventListener("click", () => {
+        const context = groupContextInput.value.trim();
+        const fullPrompt = groupTemplate.replace(
+          /<context>.*?<\/context>/g,
+          `<context>${context}</context>`
+        );
+        navigator.clipboard
+          .writeText(fullPrompt)
+          .then(() => {
+            alert("Group prompt copied to clipboard!");
+          })
+          .catch((err) => {
+            alert("Failed to copy: " + err);
+          });
+      });
+
+      personalContextInput.addEventListener("input", () => {
+        copyPromptBtnPersonal.disabled =
+          personalContextInput.value.trim() === "";
+      });
+      groupContextInput.addEventListener("input", () => {
+        copyPromptBtnGroup.disabled = groupContextInput.value.trim() === "";
+      });
+
+      /*************************************************************
+       * Simulation Setup & Reset
+       *************************************************************/
+      function resetSimulationState() {
+        timeline = [];
+        chatMessages.length = 0;
+        currentEventIndex = 0;
+        startTime = null;
+        simulationCompleted = false;
+        simulationFinishTime = null;
+        simulationHasFinished = false;
+        typingSender = null;
+        typingMessage = "";
+        typedCharCount = 0;
+        scrollOffset = 0;
+        exportLink.innerHTML = "";
+        for (const key in senderColors) {
+          delete senderColors[key];
+        }
+        colorIndex = 0;
+      }
+
+      function clearSimulation() {
+        cancelAnimationFrame(animationRequestId);
+        if (recorder && recorder.state !== "inactive") {
+          recorder.stop();
+        }
+        resetSimulationState();
+        simulationScreen.style.display = "none";
+        homeScreen.style.display = "block";
+      }
+
+      /*************************************************************
+       * Parse Config & Build Timeline
+       *************************************************************/
+      function setupSimulation(config) {
+        theme = "light";
+        const defaultDelay = config.settings?.defaultDelay ?? 1000;
+        const defaultTypingDelay = config.settings?.defaultTypingDelay ?? 800;
+        let offset = 0;
+        config.messages.forEach((msg) => {
+          let effectiveSender = "";
+          if (isGroupChat) {
+            effectiveSender = msg.sender;
+          } else {
+            effectiveSender = msg.type === "sent" ? localName : receiverName;
+          }
+          timeline.push({
+            start: offset,
+            end:
+              offset +
+              (msg.typingDelay !== undefined
+                ? msg.typingDelay
+                : defaultTypingDelay),
+            type: "typing",
+            sender: effectiveSender,
+            text: msg.text,
+          });
+          offset +=
+            msg.typingDelay !== undefined
+              ? msg.typingDelay
+              : defaultTypingDelay;
+          timeline.push({
+            start: offset,
+            end: offset,
+            type: "showMessage",
+            message: { ...msg, sender: effectiveSender },
+          });
+          offset += msg.delay !== undefined ? msg.delay : defaultDelay;
+        });
+      }
+
+      /*************************************************************
+       * Start Recording & Animation
+       *************************************************************/
+      function startRecordingAndAnimation() {
+        chunks = [];
+        animationRequestId = requestAnimationFrame(animate);
+        const stream = canvas.captureStream(30);
+        recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunks.push(e.data);
+          }
+        };
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: "video/webm" });
+          const url = URL.createObjectURL(blob);
+          exportLink.innerHTML = `<a href="${url}" download="chat-simulation.webm" id="exportAnchor" style="text-decoration: none; color: #075E54;">
+          <svg xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:4px" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M5 20h14v-2H5v2zM12 4L5 11h4v6h4v-6h4L12 4z"/>
+          </svg>
+          Export to video
+        </a>`;
+        };
+        recorder.start();
+      }
+
+      /*************************************************************
+       * Animation Loop
+       *************************************************************/
+      function animate(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        while (currentEventIndex < timeline.length) {
+          const evt = timeline[currentEventIndex];
+          if (elapsed >= evt.start) {
+            if (evt.type === "typing") {
+              typingSender = evt.sender;
+              typedCharCount = 0;
+              typingMessage = evt.text;
+            } else if (evt.type === "showMessage") {
+              if (evt.message.sender !== localName) {
+                document
+                  .getElementById("messageSound")
+                  .play()
+                  .catch(() => {});
+              }
+              typingSender = null;
+              typingMessage = "";
+              typedCharCount = 0;
+              chatMessages.push(evt.message);
+              updateScrollOffset();
+            }
+            currentEventIndex++;
+          } else {
+            break;
+          }
+        }
+        const currentTypingEvent = timeline.find(
+          (e, idx) =>
+            idx >= currentEventIndex - 1 &&
+            e.type === "typing" &&
+            e.sender === localName &&
+            elapsed >= e.start &&
+            elapsed <= e.end
+        );
+        if (currentTypingEvent) {
+          const duration = currentTypingEvent.end - currentTypingEvent.start;
+          const progress = (elapsed - currentTypingEvent.start) / duration;
+          const totalChars = currentTypingEvent.text.length;
+          typedCharCount = Math.floor(progress * totalChars);
+          if (typedCharCount > totalChars) typedCharCount = totalChars;
+        }
+        drawUI(elapsed);
+        if (currentEventIndex >= timeline.length) {
+          if (!simulationCompleted) {
+            simulationCompleted = true;
+            simulationFinishTime = elapsed;
+          } else if (
+            elapsed - simulationFinishTime >= 2000 &&
+            !simulationHasFinished
+          ) {
+            finishSimulation();
+            return;
+          }
+        }
+        animationRequestId = requestAnimationFrame(animate);
+      }
+
+      /*************************************************************
+       * Finish Simulation (Auto-stop Recording)
+       *************************************************************/
+      function finishSimulation() {
+        simulationHasFinished = true;
+        cancelAnimationFrame(animationRequestId);
+        if (recorder && recorder.state !== "inactive") {
+          recorder.stop();
+        }
+      }
+
+      /*************************************************************
+       * Auto-Scroll: Update scrollOffset so the latest messages are visible
+       *************************************************************/
+      function updateScrollOffset() {
+        let totalHeight = 0;
+        ctx.font = "16px Roboto, sans-serif";
+        chatMessages.forEach((msg) => {
+          const lines = wrapTextLines(msg.text, 220);
+          const textHeight = lines.length * 20;
+          const extraLabel = isGroupChat && msg.sender !== localName ? 18 : 0;
+          const bubbleHeight = textHeight + 20 + extraLabel;
+          totalHeight += bubbleHeight + 10;
+        });
+        scrollOffset =
+          totalHeight > CHAT_AREA_HEIGHT ? totalHeight - CHAT_AREA_HEIGHT : 0;
+      }
+
+      /*************************************************************
+       * Draw the Entire UI
+       *************************************************************/
+      function drawUI(elapsed) {
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        ctx.fillStyle = "#ece5dd";
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        drawHeader();
+        drawChatArea();
+        drawFooter(elapsed);
+      }
+
+      /*************************************************************
+       * Header: Gradient with chat title and typing indicator
+       *************************************************************/
+      function drawHeader() {
+        const gradient = ctx.createLinearGradient(0, 0, 0, HEADER_HEIGHT);
+        gradient.addColorStop(0, "#075E54");
+        gradient.addColorStop(1, "#0d674d");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, WIDTH, HEADER_HEIGHT);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 18px Roboto, sans-serif";
+        ctx.textBaseline = "top";
+        let headerText = "";
+        if (isGroupChat) {
+          headerText = groupName;
+          ctx.fillText(headerText, 60, 8);
+          if (typingSender && typingSender !== localName) {
+            ctx.font = "12px Roboto, sans-serif";
+            ctx.fillText(typingSender + " is typing...", 60, 32);
+          }
+        } else {
+          headerText = receiverName;
+          ctx.fillText(headerText, 60, 8);
+          if (typingSender && typingSender !== localName) {
+            ctx.font = "12px Roboto, sans-serif";
+            ctx.fillText("typing...", 60, 32);
+          }
+        }
+        ctx.beginPath();
+        ctx.arc(30, HEADER_HEIGHT / 2, 20, 0, Math.PI * 2);
+        ctx.fillStyle = "#ccc";
+        ctx.fill();
+      }
+
+      /*************************************************************
+       * Chat Area: Clipped area for message bubbles
+       *************************************************************/
+      function drawChatArea() {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, CHAT_AREA_TOP, WIDTH, CHAT_AREA_HEIGHT);
+        ctx.clip();
+        let yOffset = CHAT_AREA_TOP + 10;
+        chatMessages.forEach((msg) => {
+          const extraLabel = isGroupChat && msg.sender !== localName ? 18 : 0;
+          const bubbleHeight = drawMessageBubble(msg, yOffset - scrollOffset);
+          yOffset += bubbleHeight + 10;
+        });
+        ctx.restore();
+      }
+
+      /*************************************************************
+       * Draw a Single Message Bubble
+       *************************************************************/
+      function drawMessageBubble(msg, y) {
+        const padding = 10;
+        const lineHeight = 20;
+        const lines = wrapTextLines(msg.text, 220);
+        const textHeight = lines.length * lineHeight;
+        const bubbleWidth = 220 + padding * 2;
+        const extraLabel = isGroupChat && msg.sender !== localName ? 18 : 0;
+        const bubbleHeight = textHeight + padding * 2 + extraLabel;
+        const isLocal = msg.sender === localName;
+        const x = isLocal ? WIDTH - bubbleWidth - 10 : 10;
+        let bubbleColor = isLocal ? "#dcf8c6" : "#fff";
+        ctx.fillStyle = bubbleColor;
+        roundRect(
+          ctx,
+          x,
+          y + extraLabel,
+          bubbleWidth,
+          textHeight + padding * 2,
+          10
+        );
+        ctx.fill();
+        if (isGroupChat && !isLocal) {
+          if (!senderColors[msg.sender]) {
+            senderColors[msg.sender] =
+              availableColors[colorIndex % availableColors.length];
+            colorIndex++;
+          }
+          ctx.fillStyle = senderColors[msg.sender];
+          ctx.font = "bold 14px Roboto, sans-serif";
+          ctx.textBaseline = "bottom";
+          ctx.fillText(msg.sender, x, y + extraLabel - 2);
+        }
+        ctx.fillStyle = "#000";
+        ctx.font = "16px Roboto, sans-serif";
+        ctx.textBaseline = "top";
+        let textY = y + extraLabel + padding;
+        lines.forEach((line) => {
+          ctx.fillText(line, x + padding, textY);
+          textY += lineHeight;
+        });
+        return textHeight + padding * 2 + extraLabel;
+      }
+
+      /*************************************************************
+       * Footer: Input box with multi-line sender text
+       *************************************************************/
+      function drawFooter(elapsed) {
+        ctx.fillStyle = "#f0f0f0";
+        ctx.fillRect(0, HEIGHT - FOOTER_HEIGHT, WIDTH, FOOTER_HEIGHT);
+        ctx.fillStyle = "#fff";
+        roundRect(ctx, 10, HEIGHT - FOOTER_HEIGHT + 10, WIDTH - 70, 40, 20);
+        ctx.fill();
+        const inputPadding = 10;
+        const inputBoxX = 10 + inputPadding;
+        const inputBoxY = HEIGHT - FOOTER_HEIGHT + 10 + inputPadding;
+        const inputBoxWidth = WIDTH - 70 - inputPadding * 2;
+        const lineHeight = 18;
+        ctx.font = "16px Roboto, sans-serif";
+        ctx.textBaseline = "top";
+        if (typingSender === localName) {
+          let partialText = typingMessage.substring(0, typedCharCount);
+          if (
+            typedCharCount < typingMessage.length &&
+            Math.floor(performance.now() / 500) % 2 === 0
+          ) {
+            partialText += "|";
+          }
+          let wrappedLines = wrapTextLines(partialText, inputBoxWidth);
+          if (wrappedLines.length > 2) {
+            wrappedLines = wrappedLines.slice(-2);
+          }
+          ctx.fillStyle = "#000";
+          wrappedLines.forEach((line, i) => {
+            ctx.fillText(line, inputBoxX, inputBoxY + i * lineHeight);
+          });
+        } else {
+          ctx.fillStyle = "#aaa";
+          ctx.fillText("Type a message", inputBoxX, inputBoxY);
+        }
+        ctx.fillStyle = "#075E54";
+        ctx.beginPath();
+        ctx.arc(WIDTH - 35, HEIGHT - 30, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.moveTo(WIDTH - 40, HEIGHT - 35);
+        ctx.lineTo(WIDTH - 25, HEIGHT - 30);
+        ctx.lineTo(WIDTH - 40, HEIGHT - 25);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      /*************************************************************
+       * Helper: Word-wrap text into lines
+       *************************************************************/
+      function wrapTextLines(text, maxWidth) {
+        ctx.font = "16px Roboto, sans-serif";
+        const words = text.split(" ");
+        let lines = [];
+        let currentLine = "";
+        words.forEach((word) => {
+          const testLine = currentLine + word + " ";
+          if (
+            ctx.measureText(testLine).width > maxWidth &&
+            currentLine !== ""
+          ) {
+            lines.push(currentLine);
+            currentLine = word + " ";
+          } else {
+            currentLine = testLine;
+          }
+        });
+        lines.push(currentLine);
+        return lines;
+      }
+
+      /*************************************************************
+       * Helper: Draw Rounded Rectangle
+       *************************************************************/
+      function roundRect(ctx, x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+    </script>
+  </body>
+</html>
