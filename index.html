@@ -2,7 +2,9 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Chat Simulation</title>
+    <!-- Added viewport meta for responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TextTale</title>
     <link
       href="https://fonts.googleapis.com/css?family=Roboto:400,500,700"
       rel="stylesheet"
@@ -153,19 +155,24 @@
         max-width: 400px;
         margin-bottom: 20px;
       }
+      /* Responsive Canvas Container */
       #canvasContainer {
-        width: 360px;
-        height: 640px;
+        width: 90%;
+        max-width: 360px;
+        /* Maintain aspect ratio of 360x640 (9:16) */
+        aspect-ratio: 9 / 16;
         margin: 20px 0;
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         background: #ece5dd;
+        position: relative;
       }
+      /* Make canvas fill its container */
       #chatCanvas {
-        display: block;
         width: 100%;
         height: 100%;
+        display: block;
       }
       #exportLink {
         margin: 10px 0;
@@ -199,13 +206,23 @@
         color: #555;
         margin-top: 10px;
       }
+      /* Additional media query for smaller screens */
+      @media (max-width: 480px) {
+        #homeScreen {
+          padding: 20px;
+        }
+        .homeButtons button {
+          font-size: 14px;
+          padding: 8px 16px;
+        }
+      }
     </style>
   </head>
   <body>
     <!-- Home Screen -->
     <div id="homeScreen">
       <button id="infoBtn" title="Information">ℹ️</button>
-      <h1>Chat Simulator</h1>
+      <h1>TextTale</h1>
       <p>
         Enter your JSON below (following the schema) and click
         <strong>Submit</strong>:
