@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <!-- Added viewport meta for responsiveness -->
+    <!-- Ensure proper scaling on mobile devices -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TextTale</title>
     <link
@@ -10,7 +10,7 @@
       rel="stylesheet"
     />
     <style>
-      /* Prevent scrolling */
+      /* Prevent scrolling on the html and body */
       html,
       body {
         margin: 0;
@@ -159,7 +159,7 @@
       #canvasContainer {
         width: 90%;
         max-width: 360px;
-        /* Maintain aspect ratio of 360x640 (9:16) */
+        /* Maintain a 9:16 aspect ratio */
         aspect-ratio: 9 / 16;
         margin: 20px 0;
         border-radius: 12px;
@@ -205,6 +205,9 @@
         font-size: 14px;
         color: #555;
         margin-top: 10px;
+        text-align: center;
+        padding: 0 10px;
+        word-wrap: break-word;
       }
       /* Additional media query for smaller screens */
       @media (max-width: 480px) {
@@ -214,6 +217,20 @@
         .homeButtons button {
           font-size: 14px;
           padding: 8px 16px;
+        }
+        #footerText {
+          font-size: 12px;
+          padding: 10px;
+        }
+        /* Make the simulation screen scrollable */
+        #simulationScreen {
+          height: 100vh;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        /* Adjust canvas container to leave room for the footer */
+        #canvasContainer {
+          max-width: 300px;
         }
       }
     </style>
