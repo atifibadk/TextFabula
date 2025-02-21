@@ -361,41 +361,41 @@
 
       // Default JSON string to use when resetting.
       const defaultJson = `{
-  "settings": {
-    "chatType": "group",
-    "groupName": "Space Explorers",
-    "defaultDelay": 1500,
-    "defaultTypingDelay": 1000,
-    "senderName": "Captain Nova",
-    "receiverName": "Lt. Vega"
-  },
-  "messages": [
-    {
-      "sender": "Captain Nova",
-      "text": "Team, prepare for launch. Our mission is critical.",
-      "delay": 1200,
-      "typingDelay": 1000
-    },
-    {
-      "sender": "Lt. Vega",
-      "text": "Understood, Captain. All systems are go.",
-      "delay": 1000,
-      "typingDelay": 1000
-    },
-    {
-      "sender": "Dr. Orion",
-      "text": "I've completed the research on the anomaly.",
-      "delay": 1500,
-      "typingDelay": 1200
-    },
-    {
-      "sender": "Captain Nova",
-      "text": "Excellent. Let's proceed and uncover the mystery.",
-      "delay": 1300,
-      "typingDelay": 1500
-    }
-  ]
-}`;
+        "settings": {
+          "chatType": "group",
+          "groupName": "Space Explorers",
+          "defaultDelay": 1500,
+          "defaultTypingDelay": 1000,
+          "senderName": "Captain Nova",
+          "receiverName": "Lt. Vega"
+        },
+        "messages": [
+          {
+            "sender": "Captain Nova",
+            "text": "Team, prepare for launch. Our mission is critical.",
+            "delay": 1200,
+            "typingDelay": 1000
+          },
+          {
+            "sender": "Lt. Vega",
+            "text": "Understood, Captain. All systems are go.",
+            "delay": 1000,
+            "typingDelay": 1000
+          },
+          {
+            "sender": "Dr. Orion",
+            "text": "I've completed the research on the anomaly.",
+            "delay": 1500,
+            "typingDelay": 1200
+          },
+          {
+            "sender": "Captain Nova",
+            "text": "Excellent. Let's proceed and uncover the mystery.",
+            "delay": 1300,
+            "typingDelay": 1500
+          }
+        ]
+      }`;
       // Set the default JSON in the textarea on load.
       document.getElementById("jsonInput").value = defaultJson;
 
@@ -475,105 +475,105 @@
 
       // Prompt templates with default <context> tags.
       const personalTemplate = `<Prompt>
-Generate a fictional story in the form of a personal chat conversation between two individuals. The story should be engaging, dynamic, and driven through the exchange of messages. Each message should have natural pacing, incorporating optional delays to simulate real typing behavior.
+      Generate a fictional story in the form of a personal chat conversation between two individuals. The story should be engaging, dynamic, and driven through the exchange of messages. Each message should have natural pacing, incorporating optional delays to simulate real typing behavior.
 
-Adhere strictly to the following JSON schema:
+      Adhere strictly to the following JSON schema:
 
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "settings": {
-      "type": "object",
-      "properties": {
-        "chatType": { "type": "string", "enum": ["personal"] },
-        "senderName": { "type": "string" },
-        "receiverName": { "type": "string" },
-        "defaultDelay": { "type": "integer", "minimum": 0 },
-        "defaultTypingDelay": { "type": "integer", "minimum": 0 }
-      },
-      "required": ["chatType", "senderName"],
-      "additionalProperties": false
-    },
-    "messages": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "text": { "type": "string" },
-          "delay": { "type": "integer", "minimum": 0 },
-          "typingDelay": { "type": "integer", "minimum": 0 },
-          "type": { "type": "string", "enum": ["sent", "received"] }
+          "settings": {
+            "type": "object",
+            "properties": {
+              "chatType": { "type": "string", "enum": ["personal"] },
+              "senderName": { "type": "string" },
+              "receiverName": { "type": "string" },
+              "defaultDelay": { "type": "integer", "minimum": 0 },
+              "defaultTypingDelay": { "type": "integer", "minimum": 0 }
+            },
+            "required": ["chatType", "senderName"],
+            "additionalProperties": false
+          },
+          "messages": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": { "type": "string" },
+                "delay": { "type": "integer", "minimum": 0 },
+                "typingDelay": { "type": "integer", "minimum": 0 },
+                "type": { "type": "string", "enum": ["sent", "received"] }
+              },
+              "required": ["text", "type"],
+              "additionalProperties": false
+            }
+          }
         },
-        "required": ["text", "type"],
-        "additionalProperties": false
+        "required": ["settings", "messages"]
       }
-    }
-  },
-  "required": ["settings", "messages"]
-}
 
-**Instructions:**  
-- Keep the theme light and engaging. The story should have a fun, positive, or heartwarming tone.  
-- Delays should be in milliseconds (1000ms = 1 second).  
-- The conversation should feel natural, with realistic pacing and message flow.
+      **Instructions:**
+      - Keep the theme light and engaging. The story should have a fun, positive, or heartwarming tone.
+      - Delays should be in milliseconds (1000ms = 1 second).
+      - The conversation should feel natural, with realistic pacing and message flow.
 
-The story should follow the given context:
+      The story should follow the given context:
 
-<context>Insert your personal chat context here</context>
-</Prompt>`;
+      <context>Insert your personal chat context here</context>
+      </Prompt>`;
 
       const groupTemplate = `<Prompt>
-Generate a fictional story in the form of a group chat conversation among multiple people. The story should feel dynamic, with different characters engaging in natural and varied interactions. The pacing should reflect realistic group chat behavior, including natural pauses and typing delays.
+      Generate a fictional story in the form of a group chat conversation among multiple people. The story should feel dynamic, with different characters engaging in natural and varied interactions. The pacing should reflect realistic group chat behavior, including natural pauses and typing delays.
 
-Follow the given JSON schema strictly:
+      Follow the given JSON schema strictly:
 
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "settings": {
-      "type": "object",
-      "properties": {
-        "chatType": { "type": "string", "enum": ["group"] },
-        "senderName": { "type": "string" },
-        "groupName": { "type": "string" },
-        "defaultDelay": { "type": "integer", "minimum": 0 },
-        "defaultTypingDelay": { "type": "integer", "minimum": 0 }
-      },
-      "required": ["chatType", "senderName", "groupName"],
-      "additionalProperties": false
-    },
-    "messages": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
+      {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
-          "text": { "type": "string" },
-          "delay": { "type": "integer", "minimum": 0 },
-          "typingDelay": { "type": "integer", "minimum": 0 },
-          "sender": { "type": "string" }
+          "settings": {
+            "type": "object",
+            "properties": {
+              "chatType": { "type": "string", "enum": ["group"] },
+              "senderName": { "type": "string" },
+              "groupName": { "type": "string" },
+              "defaultDelay": { "type": "integer", "minimum": 0 },
+              "defaultTypingDelay": { "type": "integer", "minimum": 0 }
+            },
+            "required": ["chatType", "senderName", "groupName"],
+            "additionalProperties": false
+          },
+          "messages": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": { "type": "string" },
+                "delay": { "type": "integer", "minimum": 0 },
+                "typingDelay": { "type": "integer", "minimum": 0 },
+                "sender": { "type": "string" }
+              },
+              "required": ["text", "sender"],
+              "additionalProperties": false
+            }
+          }
         },
-        "required": ["text", "sender"],
-        "additionalProperties": false
+        "required": ["settings", "messages"]
       }
-    }
-  },
-  "required": ["settings", "messages"]
-}
 
-**Instructions:**  
-- Keep the theme light and engaging. The conversation should be fun, humorous, uplifting, or heartwarming.  
-- Delays should be in milliseconds (1000ms = 1 second).  
-- The group chat should have at least three participants with varied personalities and message styles.  
-- Messages should flow naturally, simulating a real group conversation.
+      **Instructions:**
+      - Keep the theme light and engaging. The conversation should be fun, humorous, uplifting, or heartwarming.
+      - Delays should be in milliseconds (1000ms = 1 second).
+      - The group chat should have at least three participants with varied personalities and message styles.
+      - Messages should flow naturally, simulating a real group conversation.
 
-The story should follow the given context:
+      The story should follow the given context:
 
-<context>Insert your group chat context here</context>
-</Prompt>`;
+      <context>Insert your group chat context here</context>
+      </Prompt>`;
 
       /*************************************************************
        * FFmpeg Setup
@@ -581,11 +581,29 @@ The story should follow the given context:
       const { createFFmpeg, fetchFile } = FFmpeg;
       const ffmpeg = createFFmpeg({
         log: true,
-        progress: ({ ratio }) => {
+        progress: ({ time }) => {
+          // expectedDuration is in ms; add 2000 ms buffer and convert to seconds.
+          const totalSeconds = (expectedDuration + 2000) / 1000;
+          // Compute the ratio from the FFmpeg reported time
+          let computedRatio = time / totalSeconds;
+          // Handle NaN or negative values
+          if (isNaN(computedRatio) || computedRatio < 0) {
+            computedRatio = 0;
+          }
+          // Cap the percentage at 100%
+          const percent = Math.min(Math.round(computedRatio * 100), 100);
           const progressIndicator =
             document.getElementById("progressIndicator");
           progressIndicator.style.display = "block";
-          // Processing animation will update the text.
+          progressIndicator.innerText = `Processing: ${percent}%`;
+          console.log(
+            "FFmpeg progress - time:",
+            time,
+            "totalSeconds:",
+            totalSeconds,
+            "computed ratio:",
+            computedRatio
+          );
         },
       });
 
@@ -761,6 +779,9 @@ The story should follow the given context:
           });
           offset += msg.delay !== undefined ? msg.delay : defaultDelay;
         });
+        // Save total expected duration (in ms) and log it
+        expectedDuration = offset;
+        console.log("Expected simulation duration (ms):", expectedDuration);
       }
 
       /*************************************************************
@@ -807,7 +828,8 @@ The story should follow the given context:
                   "-b:v",
                   "500k", // set a lower video bitrate
                   "-preset",
-                  "ultrafast", // use the fastest preset for speed
+                  "ultrafast",
+                  // use the fastest preset for speed
                   "output.mp4"
                 );
               } else {
