@@ -339,25 +339,30 @@
     ></audio>
 
     <script>
-      // Processing Animation Functions
-      let processingInterval;
-      function startProcessingAnimation() {
-        const progressIndicator = document.getElementById("progressIndicator");
-        let dots = "";
-        processingInterval = setInterval(() => {
-          if (dots.length >= 3) {
-            dots = "";
-          } else {
-            dots += ".";
-          }
-          progressIndicator.innerText = "Processing" + dots;
-        }, 500);
-      }
-      function stopProcessingAnimation() {
-        clearInterval(processingInterval);
-        const progressIndicator = document.getElementById("progressIndicator");
-        progressIndicator.innerText = "";
-      }
+      // Global flag to cancel processing if "New" is clicked
+      let processingCanceled = false;
+
+      // FFmpeg Setup with progress callback to update percentage
+      const { createFFmpeg, fetchFile } = FFmpeg;
+      const ffmpeg = createFFmpeg({
+        log: true,
+        progress: ({ ratio }) => {
+          const progressIndicator =
+            document.getElementById("progressIndicator");
+          progressIndicator.style.display = "block";
+          const percentage =
+            typeof ratio === "number" && !isNaN(ratio)
+              ? (ratio * 100).toFixed(1)
+              : 0;
+          progressIndicator.innerText = `Processing: ${percentage}%`;
+          console.log(
+            "FFmpeg progress ratio:",
+            ratio,
+            "which is",
+            percentage + "%"
+          );
+        },
+      });
 
       // Default JSON string to use when resetting.
       const defaultJson = `{
@@ -576,20 +581,6 @@ The story should follow the given context:
 </Prompt>`;
 
       /*************************************************************
-       * FFmpeg Setup
-       *************************************************************/
-      const { createFFmpeg, fetchFile } = FFmpeg;
-      const ffmpeg = createFFmpeg({
-        log: true,
-        progress: ({ ratio }) => {
-          const progressIndicator =
-            document.getElementById("progressIndicator");
-          progressIndicator.style.display = "block";
-          // Processing animation will update the text.
-        },
-      });
-
-      /*************************************************************
        * UI Event Handlers
        *************************************************************/
       submitBtn.addEventListener("click", () => {
@@ -617,6 +608,7 @@ The story should follow the given context:
       });
 
       newBtn.addEventListener("click", () => {
+        processingCanceled = true; // Cancel any ongoing processing
         clearSimulation();
         // Reset context inputs and default JSON
         personalContextInput.value = "";
@@ -707,6 +699,7 @@ The story should follow the given context:
         exportLink.innerHTML = "";
         const progressIndicator = document.getElementById("progressIndicator");
         progressIndicator.style.display = "none";
+        progressIndicator.innerText = "";
         for (const key in senderColors) {
           delete senderColors[key];
         }
@@ -777,48 +770,218 @@ The story should follow the given context:
           }
         };
         // When recording stops, set up the export button with conversion
+        // Inside recorder.onstop:
         recorder.onstop = async () => {
           // Create a blob from the recorded chunks (WebM format)
           const videoBlob = new Blob(chunks, { type: "video/webm" });
+          console.log("Recording stopped. Video blob size:", videoBlob.size);
           exportLink.innerHTML = `<button id="exportBtn">Export to video</button>`;
-          document
-            .getElementById("exportBtn")
-            .addEventListener("click", async () => {
-              const exportBtn = document.getElementById("exportBtn");
-              exportBtn.disabled = true;
-              const progressIndicator =
-                document.getElementById("progressIndicator");
-              progressIndicator.style.display = "block";
-              startProcessingAnimation();
+          const exportBtn = document.getElementById("exportBtn");
 
-              if (!ffmpeg.isLoaded()) {
-                await ffmpeg.load();
-              }
+          exportBtn.addEventListener("click", async () => {
+            processingCanceled = false;
+            exportBtn.disabled = true;
+            const progressIndicator =
+              document.getElementById("progressIndicator");
+            progressIndicator.style.display = "block";
 
-              // Write the recorded WebM blob to FFmpeg's filesystem
-              ffmpeg.FS("writeFile", "input.webm", await fetchFile(videoBlob));
+            if (!ffmpeg.isLoaded()) {
+              await ffmpeg.load();
+              console.log("FFmpeg loaded.");
+            }
 
-              // Run FFmpeg to convert WebM to MP4
-              await ffmpeg.run("-i", "input.webm", "output.mp4");
+            // Write the recorded WebM blob to FFmpeg's filesystem
+            await ffmpeg.FS(
+              "writeFile",
+              "input.webm",
+              await fetchFile(videoBlob)
+            );
+            console.log("Input file written to FFmpeg FS.");
 
-              // Read the converted MP4 file from FFmpeg's filesystem
-              const data = ffmpeg.FS("readFile", "output.mp4");
-              const mp4Blob = new Blob([data.buffer], { type: "video/mp4" });
-              const mp4Url = URL.createObjectURL(mp4Blob);
+            // Set conversion parameters conditionally for mobile devices
+            let ffmpegArgs = [];
+            if (/Mobi|Android/i.test(navigator.userAgent)) {
+              console.log(
+                "Mobile device detected. Using optimized conversion parameters."
+              );
+              ffmpegArgs = [
+                "-i",
+                "input.webm",
+                "-vf",
+                "scale=640:-1",
+                "-b:v",
+                "500k",
+                "-preset",
+                "ultrafast",
+                "-progress",
+                "pipe:1",
+                "output.mp4",
+              ];
+            } else {
+              console.log(
+                "Desktop detected. Using default conversion parameters."
+              );
+              ffmpegArgs = [
+                "-i",
+                "input.webm",
+                "-progress",
+                "pipe:1",
+                "output.mp4",
+              ];
+            }
 
-              // Trigger the download of the MP4 file
-              const a = document.createElement("a");
-              a.href = mp4Url;
-              a.download = "chat-simulation.mp4";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
+            console.log("Running FFmpeg with arguments:", ffmpegArgs);
+            await ffmpeg.run(...ffmpegArgs);
+            progressIndicator.innerText = "Processing: 100%";
+            console.log("FFmpeg conversion finished.");
 
-              stopProcessingAnimation();
+            if (processingCanceled) {
               progressIndicator.style.display = "none";
               exportBtn.disabled = false;
-            });
+              console.log("Processing was canceled.");
+              return;
+            }
+
+            // Read the converted MP4 file from FFmpeg's filesystem
+            const data = ffmpeg.FS("readFile", "output.mp4");
+            console.log("Output file read. Size:", data.length, "bytes");
+            const mp4Blob = new Blob([data.buffer], { type: "video/mp4" });
+            const mp4Url = URL.createObjectURL(mp4Blob);
+            console.log("Generated download URL:", mp4Url);
+
+            // Attempt to trigger an automatic download
+            const a = document.createElement("a");
+            a.href = mp4Url;
+            a.download = "chat-simulation.mp4";
+            document.body.appendChild(a);
+            a.click();
+            console.log("Download triggered via auto-click.");
+            // Remove the auto-trigger element after a brief delay
+            setTimeout(() => {
+              document.body.removeChild(a);
+            }, 1000);
+
+            // Fallback: display a visible download link
+            exportLink.innerHTML = `<a id="downloadLink" href="${mp4Url}" download="chat-simulation.mp4">Click here to download your video</a>`;
+            console.log("Displayed fallback download link.");
+
+            progressIndicator.style.display = "none";
+            exportBtn.disabled = false;
+            console.log(
+              "Export button re-enabled, disabled:",
+              exportBtn.disabled
+            );
+          });
         };
+        // Inside recorder.onstop:
+        recorder.onstop = async () => {
+          // Create a blob from the recorded chunks (WebM format)
+          const videoBlob = new Blob(chunks, { type: "video/webm" });
+          console.log("Recording stopped. Video blob size:", videoBlob.size);
+          exportLink.innerHTML = `<button id="exportBtn">Export to video</button>`;
+          const exportBtn = document.getElementById("exportBtn");
+
+          exportBtn.addEventListener("click", async () => {
+            processingCanceled = false;
+            exportBtn.disabled = true;
+            const progressIndicator =
+              document.getElementById("progressIndicator");
+            progressIndicator.style.display = "block";
+
+            if (!ffmpeg.isLoaded()) {
+              await ffmpeg.load();
+              console.log("FFmpeg loaded.");
+            }
+
+            // Write the recorded WebM blob to FFmpeg's filesystem
+            await ffmpeg.FS(
+              "writeFile",
+              "input.webm",
+              await fetchFile(videoBlob)
+            );
+            console.log("Input file written to FFmpeg FS.");
+
+            // Set conversion parameters conditionally for mobile devices
+            let ffmpegArgs = [];
+            if (/Mobi|Android/i.test(navigator.userAgent)) {
+              console.log(
+                "Mobile device detected. Using optimized conversion parameters."
+              );
+              ffmpegArgs = [
+                "-i",
+                "input.webm",
+                "-vf",
+                "scale=640:-1",
+                "-b:v",
+                "500k",
+                "-preset",
+                "ultrafast",
+                "-progress",
+                "pipe:1",
+                "output.mp4",
+              ];
+            } else {
+              console.log(
+                "Desktop detected. Using default conversion parameters."
+              );
+              ffmpegArgs = [
+                "-i",
+                "input.webm",
+                "-progress",
+                "pipe:1",
+                "output.mp4",
+              ];
+            }
+
+            console.log("Running FFmpeg with arguments:", ffmpegArgs);
+            await ffmpeg.run(...ffmpegArgs);
+            progressIndicator.innerText = "Processing: 100%";
+            console.log("FFmpeg conversion finished.");
+
+            if (processingCanceled) {
+              progressIndicator.style.display = "none";
+              exportBtn.disabled = false;
+              console.log("Processing was canceled.");
+              return;
+            }
+
+            // Read the converted MP4 file from FFmpeg's filesystem
+            const data = ffmpeg.FS("readFile", "output.mp4");
+            console.log("Output file read. Size:", data.length, "bytes");
+            const mp4Blob = new Blob([data.buffer], { type: "video/mp4" });
+            const mp4Url = URL.createObjectURL(mp4Blob);
+            console.log("Generated download URL:", mp4Url);
+
+            // Attempt to trigger an automatic download via an anchor click
+            const a = document.createElement("a");
+            a.href = mp4Url;
+            a.download = "chat-simulation.mp4";
+            document.body.appendChild(a);
+            a.click();
+            console.log("Download triggered via auto-click.");
+            setTimeout(() => {
+              if (document.body.contains(a)) {
+                document.body.removeChild(a);
+              }
+            }, 1000);
+
+            // Fallback: if auto-click didn't work, show a visible download link.
+            exportLink.style.display = "block"; // force visible
+            exportLink.innerHTML = `<a id="downloadLink" style="display:block; margin:10px 0; font-size:16px; color:#075e54;" href="${mp4Url}" download="chat-simulation.mp4">Click here to download your video</a>`;
+            console.log("Displayed fallback download link.");
+
+            // Optionally, try a window.open fallback:
+            // window.open(mp4Url, '_blank');
+
+            progressIndicator.style.display = "none";
+            exportBtn.disabled = false;
+            console.log(
+              "Export button re-enabled, disabled:",
+              exportBtn.disabled
+            );
+          });
+        };
+
         recorder.start();
       }
 
